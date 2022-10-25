@@ -3,6 +3,7 @@ import logging
 import time
 from prometheus_client import start_http_server, Gauge
 import os
+import signal
 
 
 class MetricsCollector:
@@ -117,19 +118,33 @@ class MetricsCollector:
             logging.info("Connection to K8s client failed.")
 
 
+def handler(signum, frame):
+    print("Program was interrupted with CTRL+C")
+    exit(0)
+
+
 def main():
     # define vars
     service_name = "istiod-istio-1611"
     namespace_name = "istio-system"
-    exporter_port = int(os.getenv("EXPORTER_PORT", "9099"))
+    exporter_port = int(os.getenv("EXPORTER_PORT", "9153"))
 
-    # config.load_incluster_config()  # inside cluster authentication
-    config.load_kube_config()  # outside cluster authentication
+    config.load_incluster_config()  # inside cluster authentication
+    # config.load_kube_config()  # outside cluster authentication
 
-    t = MetricsCollector(service=service_name, namespace=namespace_name)
+    t = MetricsCollector(
+        polling_interval_seconds=1,
+        service=service_name,
+        namespace=namespace_name
+        )
+    print("Starting server on port", exporter_port)
     start_http_server(exporter_port)
     t.collect_metrics_loop()
 
 
 if __name__ == "__main__":
+    # catch keyboard interrupt signal and exit gracefully
+    signal.signal(signal.SIGINT, handler)
+
+    # start exporter
     main()
