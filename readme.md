@@ -1,8 +1,8 @@
 ## Description
 
 Prometheus exporter built in Python that publishes kubernetes service availability metrics:
-* service_endpoints_counter
-* service_not_ready_pod_ips_counter
+* srv_ready_pods (displays current numbers of service endpoints - pods that are ready to serve traffic)
+* srv_not_ready_pods (displays current number of service pods that aren'r ready to serve traffic)
 
 # Run script locally, from outside the cluster
 
@@ -37,7 +37,7 @@ kubectl apply -f deployment.yaml
 # check app logs
 kubectl logs -l app=endpoint-prom-exporter -f
 
-# test 
+# testing
 kubectl apply -f foo_deployment.yaml
 kubectl set image pod foo-f88c97f79-5dvph blabla=nginx:fail
 kubectl set image deployment foo blabla=nginx:1.12.0
