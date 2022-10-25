@@ -19,7 +19,7 @@ class MetricsCollector:
         format="%(levelname)s:%(asctime)s:%(message)s", level=logging.INFO
     )
 
-    def __init__(self, poll_interval=5, service=None, namespace=None, otel_enabled=False, otel_api_key=None, otel_serv_name=None):
+    def __init__(self, poll_interval=5, service=None, namespace=None, otel_enabled=None, otel_api_key=None, otel_serv_name=None):
         self.poll_interval = poll_interval
         self.core_api = client.CoreV1Api()
         self._k8s_client_connected = False
@@ -36,7 +36,7 @@ class MetricsCollector:
         self.otel_api_key = os.getenv("OTEL_API_KEY") if otel_api_key is None else otel_api_key
         self.otel_serv_name = service if otel_serv_name is None else otel_serv_name
         self._honeycomb_client_connected = False
-        self.otel_enabled = otel_enabled
+        self.otel_enabled = os.getenv("OTEL_ENABLED") if otel_enabled is None else False
 
     def __time_track(func):
         """
@@ -84,6 +84,7 @@ class MetricsCollector:
             # add data up front
             ev.add(data)
             # ev.add_field("duration_ms", 153.12)
+            logging.info(f"Sending event to otel {data}")
             ev.send()
 
     # @__time_track
@@ -164,7 +165,7 @@ class MetricsCollector:
                 }
                 if self.otel_enabled:
                     self._send_otel_event(otel_data)
-                logging.info(otel_data) # tobedeleted
+                logging.info(f"Prometheus collected metrics: {otel_data}")  # tobedeleted
 
         else:
             logging.info("Connection to K8s client failed.")
@@ -177,18 +178,21 @@ def handler(signum, frame):
 
 def main():
     # define vars
-    service_name = "istiod-istio-1611"
-    namespace_name = "istio-system"
+    service_name = "foo"
+    namespace_name = "default"
     exporter_port = int(os.getenv("EXPORTER_PORT", "9153"))
+    kube_auth = os.getenv("KUBE_AUTH_INSIDE_CLUSTER", False)
 
-    # config.load_incluster_config()  # inside cluster authentication
-    config.load_kube_config()  # outside cluster authentication
+    # authenticate k8s client
+    if kube_auth:
+        config.load_incluster_config()  # inside cluster authentication
+    else:
+        config.load_kube_config()  # outside cluster authentication
 
     t = MetricsCollector(
         poll_interval=2,
         service=service_name,
-        namespace=namespace_name,
-        otel_enabled=False
+        namespace=namespace_name
         )
     print("Starting server on port", exporter_port)
     start_http_server(exporter_port)
