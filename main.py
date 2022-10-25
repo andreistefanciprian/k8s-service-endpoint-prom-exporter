@@ -19,7 +19,7 @@ class MetricsCollector:
         format="%(levelname)s:%(asctime)s:%(message)s", level=logging.INFO
     )
 
-    def __init__(self, poll_interval=5, service=None, namespace=None, otel_api_key=None, otel_serv_name=None):
+    def __init__(self, poll_interval=5, service=None, namespace=None, otel_enabled=False, otel_api_key=None, otel_serv_name=None):
         self.poll_interval = poll_interval
         self.core_api = client.CoreV1Api()
         self._k8s_client_connected = False
@@ -33,9 +33,10 @@ class MetricsCollector:
             "srv_not_ready_pods",
             "Number of current pods that are not serving traffic to service.",
         )
-        self.otel_api_key = otel_api_key
+        self.otel_api_key = os.getenv("OTEL_API_KEY") if otel_api_key is None else otel_api_key
         self.otel_serv_name = service if otel_serv_name is None else otel_serv_name
         self._honeycomb_client_connected = False
+        self.otel_enabled = otel_enabled
 
     def __time_track(func):
         """
@@ -76,7 +77,7 @@ class MetricsCollector:
 
     def _send_otel_event(self, data):
         """Send otel event."""
-        
+
         if self._initialise_otel_client():
             # create a new event
             ev = libhoney.new_event()
@@ -161,7 +162,8 @@ class MetricsCollector:
                     "not_ready_count": dbg_not_ready_count,
                     "not_ready_ips": dbg_not_ready_list
                 }
-                self._send_otel_event(otel_data)
+                if self.otel_enabled:
+                    self._send_otel_event(otel_data)
                 logging.info(otel_data) # tobedeleted
 
         else:
@@ -178,18 +180,15 @@ def main():
     service_name = "istiod-istio-1611"
     namespace_name = "istio-system"
     exporter_port = int(os.getenv("EXPORTER_PORT", "9153"))
-    honeycomb_api_key = os.getenv("OTEL_API_KEY")
-    honeycomb_dataset_name = os.getenv("OTEL_SERVICE_NAME", service_name)
 
     # config.load_incluster_config()  # inside cluster authentication
     config.load_kube_config()  # outside cluster authentication
 
     t = MetricsCollector(
-        poll_interval=3,
+        poll_interval=2,
         service=service_name,
         namespace=namespace_name,
-        otel_api_key=honeycomb_api_key,
-        otel_serv_name=honeycomb_dataset_name
+        otel_enabled=False
         )
     print("Starting server on port", exporter_port)
     start_http_server(exporter_port)
