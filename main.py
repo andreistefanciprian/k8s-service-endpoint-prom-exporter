@@ -4,6 +4,8 @@ import time
 from prometheus_client import start_http_server, Gauge
 import os
 import signal
+import libhoney
+from datetime import datetime, timezone
 
 
 class MetricsCollector:
@@ -17,8 +19,8 @@ class MetricsCollector:
         format="%(levelname)s:%(asctime)s:%(message)s", level=logging.INFO
     )
 
-    def __init__(self, polling_interval_seconds=5, service=None, namespace=None):
-        self.polling_interval_seconds = polling_interval_seconds
+    def __init__(self, poll_interval=5, service=None, namespace=None, otel_enabled=False, otel_api_key=None, otel_serv_name=None):
+        self.poll_interval = poll_interval
         self.core_api = client.CoreV1Api()
         self._k8s_client_connected = False
         self.service = service
@@ -31,6 +33,10 @@ class MetricsCollector:
             "srv_not_ready_pods",
             "Number of current pods that are not serving traffic to service.",
         )
+        self.otel_api_key = os.getenv("OTEL_API_KEY") if otel_api_key is None else otel_api_key
+        self.otel_serv_name = service if otel_serv_name is None else otel_serv_name
+        self._honeycomb_client_connected = False
+        self.otel_enabled = otel_enabled
 
     def __time_track(func):
         """
@@ -46,8 +52,42 @@ class MetricsCollector:
 
         return wrapper
 
+    def _initialise_otel_client(self):
+        """
+        Initialise honeycomb sdk client if not already initialised.
+        Returns bool.
+        """
+
+        if not self._honeycomb_client_connected:
+            try:
+                libhoney.init(
+                    writekey=self.otel_api_key,
+                    dataset=self.otel_serv_name,
+                    debug=False
+                )
+            except Exception as e:
+                logging.info(e)
+                raise
+            else:
+                logging.debug("Connection to Honeycomb was established.")
+                self._honeycomb_client_connected = True
+                return True
+        else:
+            return True
+
+    def _send_otel_event(self, data):
+        """Send otel event."""
+
+        if self._initialise_otel_client():
+            # create a new event
+            ev = libhoney.new_event()
+            # add data up front
+            ev.add(data)
+            # ev.add_field("duration_ms", 153.12)
+            ev.send()
+
     # @__time_track
-    def _initialise_client(self):
+    def _initialise_k8s_client(self):
         """
         Initialise k8s sdk client if not already initialised.
         Returns bool.
@@ -70,32 +110,32 @@ class MetricsCollector:
         """Metrics collector loop"""
 
         while True:
-            self.get_endpoints()
-            time.sleep(self.polling_interval_seconds)
+            self._get_endpoints()
+            time.sleep(self.poll_interval)
 
     # @__time_track
-    def get_endpoints(self):
+    def _get_endpoints(self):
         """
         Returns a list of service endpoints for a namespaced service.
         Returns a list of not ready pod IPs for a namespaced service.
         """
 
-        if self._initialise_client():
+        if self._initialise_k8s_client():
             try:
-                # Fetch raw status data from the application
+                # query k8s api for service endpoints data
                 result = self.core_api.read_namespaced_endpoints(
                     self.service, self.namespace
                 )
             except Exception as e:
                 logging.debug(e)
             else:
+                # parse data from k8s api
                 endpoint_addresses = 0
                 not_ready_addresses = 0
                 dbg_eps_list = []  # tobedeleted
                 dbg_eps_count = 0  # tobedeleted
                 dbg_not_ready_list = []  # tobedeleted
                 dbg_not_ready_count = 0  # tobedeleted
-                # Update Prometheus metrics with application metrics
                 if result.subsets is not None:
                     for i in result.subsets:
                         if i.addresses is not None:
@@ -108,12 +148,24 @@ class MetricsCollector:
                                 dbg_not_ready_list.append(j.ip)  # tobedeleted
                 dbg_not_ready_count = len(dbg_not_ready_list)  # tobedeleted
                 dbg_eps_count = len(dbg_eps_list)  # tobedeleted
+                
+                # set prometheus metrics
                 self.prom_endpoint_addresses_counter.set(endpoint_addresses)
                 self.prom_not_ready_addresses_counter.set(not_ready_addresses)
-                logging.info(f"ready count: {dbg_eps_count}")  # tobedeleted
-                logging.info(f"ready IPs: {dbg_eps_list}")  # tobedeleted
-                logging.info(f"not ready count: {dbg_not_ready_count}")  # tobedeleted
-                logging.info(f"not ready IPs: {dbg_not_ready_list}")  # tobedeleted
+                
+                # send otel event
+                timestamp = datetime.now(timezone.utc).astimezone()
+                otel_data = {
+                    "timestamp": timestamp.isoformat(),
+                    "ready_count": dbg_eps_count,
+                    "ready_ips": dbg_eps_list,
+                    "not_ready_count": dbg_not_ready_count,
+                    "not_ready_ips": dbg_not_ready_list
+                }
+                if self.otel_enabled:
+                    self._send_otel_event(otel_data)
+                logging.info(otel_data) # tobedeleted
+
         else:
             logging.info("Connection to K8s client failed.")
 
@@ -129,13 +181,14 @@ def main():
     namespace_name = "istio-system"
     exporter_port = int(os.getenv("EXPORTER_PORT", "9153"))
 
-    config.load_incluster_config()  # inside cluster authentication
-    # config.load_kube_config()  # outside cluster authentication
+    # config.load_incluster_config()  # inside cluster authentication
+    config.load_kube_config()  # outside cluster authentication
 
     t = MetricsCollector(
-        polling_interval_seconds=1,
+        poll_interval=2,
         service=service_name,
-        namespace=namespace_name
+        namespace=namespace_name,
+        otel_enabled=False
         )
     print("Starting server on port", exporter_port)
     start_http_server(exporter_port)
