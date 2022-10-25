@@ -28,14 +28,14 @@ Note: Use `config.load_incluster_config()` method to authenticate to k8s cluster
 
 ```
 # build container image
-docker build -f Dockerfile -t andreistefanciprian/endpoint-prom-exporter:latest .
-docker image push andreistefanciprian/endpoint-prom-exporter
+docker build -f Dockerfile -t andreistefanciprian/endpoints-prom-exporter:latest .
+docker image push andreistefanciprian/endpoints-prom-exporter
 
 # build k8s resources
 kubectl apply -f deployment.yaml
 
 # check app logs
-kubectl logs -l app=endpoint-prom-exporter -f
+kubectl logs -l app=endpoints-prom-exporter -f
 
 # testing
 kubectl apply -f foo_deployment.yaml
