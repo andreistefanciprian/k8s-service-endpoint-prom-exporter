@@ -1,11 +1,11 @@
 ## Description
 
 Monitors a kubernetes service and collects endpoint metrics:
-* srv_ready_pods (displays current numbers of service endpoints - pods that are ready to serve traffic)
-* srv_not_ready_pods (displays current number of service pods that aren'r ready to serve traffic)
+* srv_ready_pods (displays current numbers of service endpoints - pods that are ready to serve traffic).
+* srv_not_ready_pods (displays current number of service pods that aren'r ready to serve traffic).
 These metrics can be:
-* exported to Prometheus (prometheus format)
-* sent to Honeycomb as events (json format)
+* exported to Prometheus (prometheus format).
+* sent to Honeycomb as events (json format).
 
 #### Run script locally, from outside the cluster
 
