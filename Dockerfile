@@ -12,4 +12,4 @@ RUN pip install -r requirements.txt
 
 ADD --chown=nonroot:nonroot main.py  .
 
-CMD ["python", "main.py"]
+ENTRYPOINT python main.py

@@ -3,6 +3,7 @@
 Monitors a kubernetes service and collects endpoint metrics:
 * srv_ready_pods (displays current numbers of service endpoints - pods that are ready to serve traffic)
 * srv_not_ready_pods (displays current number of service pods that aren'r ready to serve traffic)  
+
 These metrics can be:
 * exported to Prometheus (prometheus format)
 * sent to Honeycomb as events (json format)  
@@ -19,13 +20,10 @@ source venv/bin/activate
 # install pip packages
 pip install -r requirements.txt
 
-# run script
-python main.py
-
-# running script with OTEL enabled
+# run script with OTEL enabled/disabled
 export OTEL_API_KEY=<HONEYCOMB_API_KEY>
-export OTEL_ENABLED=True
-python main.py
+python main.py --service-name foo --namespace-name default --polling-interval 2 --otel-enabled True
+python main.py --service-name foo --namespace-name default --polling-interval 2
 ```
 
 #### Run script as k8s deployment
