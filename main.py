@@ -6,6 +6,7 @@ import os
 import signal
 import libhoney
 from datetime import datetime, timezone
+import argparse
 
 
 class MetricsCollector:
@@ -23,7 +24,7 @@ class MetricsCollector:
         format="%(levelname)s:%(asctime)s:%(message)s", level=logging.INFO
     )
 
-    def __init__(self, poll_interval=5, service=None, namespace=None, otel_enabled=False, otel_api_key=None, otel_serv_name=None):
+    def __init__(self, poll_interval, service, namespace, otel_enabled, otel_api_key=None, otel_serv_name=None):
         self.poll_interval = poll_interval
         self.core_api = client.CoreV1Api()
         self._k8s_client_connected = False
@@ -180,13 +181,39 @@ def handler(signum, frame):
     exit(0)
 
 
+def validate_args(args):
+    """Validate namespace/service exists."""
+    # print(args)
+    pass
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--service-name',
+                        type=str,
+                        help="K8s service name that you want to monitor.",
+                        required=True)
+    parser.add_argument('--namespace-name',
+                        type=str,
+                        help="K8s namespace where the service is running.",
+                        required=True)
+    parser.add_argument('--polling-interval',
+                        type=int,
+                        default=10,
+                        help="Period of time in seconds in between metric collection calls.",
+                        required=False)
+    parser.add_argument('--otel-enabled',
+                        type=bool,
+                        default=False,
+                        help="Send metrics to Honeycomb.",
+                        required=False)
+    args = parser.parse_args()
+    validate_args(args)
+
     # define vars
-    service_name = "foo"
-    namespace_name = "default"
     exporter_port = int(os.getenv("EXPORTER_PORT", "9153"))
     kube_auth = os.getenv("KUBE_AUTH_INSIDE_CLUSTER", False)
-    otel_enabled = os.getenv("OTEL_ENABLED")
+    # otel_enabled = os.getenv("OTEL_ENABLED")
 
     # authenticate k8s client
     if kube_auth:
@@ -195,10 +222,10 @@ def main():
         config.load_kube_config()  # outside cluster authentication
 
     t = MetricsCollector(
-        poll_interval=2,
-        service=service_name,
-        namespace=namespace_name,
-        otel_enabled=otel_enabled
+        poll_interval=args.polling_interval,
+        service=args.service_name,
+        namespace=args.namespace_name,
+        otel_enabled=args.otel_enabled
         )
     print("Starting server on port", exporter_port)
     start_http_server(exporter_port)
