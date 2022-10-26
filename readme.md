@@ -1,10 +1,11 @@
 ## Description
 
-Prometheus exporter built in Python that publishes kubernetes service availability metrics:
+Monitors a kubernetes service and collects endpoint metrics:
 * srv_ready_pods (displays current numbers of service endpoints - pods that are ready to serve traffic)
 * srv_not_ready_pods (displays current number of service pods that aren'r ready to serve traffic)
-
-The script also can send events with the application metrics to honeycomb.
+These metrics can be:
+* exported to Prometheus (prometheus format)
+* sent to Honeycomb as events (json format)
 
 #### Run script locally, from outside the cluster
 
@@ -20,12 +21,18 @@ pip install -r requirements.txt
 
 # run script
 python main.py
+
+# running script with OTEL enabled
+export OTEL_API_KEY=<HONEYCOMB_API_KEY>
+export OTEL_ENABLED=True
+python main.py
 ```
 
 #### Run script as k8s deployment
 
 ```
-# If you send honeycomb events you need to define otel api key as secret
+# If you send honeycomb events you need to define otel api key as secret and
+# set OTEL_ENABLED env var in deployment manifest k8s/deployment.yaml
 kubectl create secret generic honeycomb --from-literal=otel_api_key=<OTEL API KEY HERE>
 
 # build container image

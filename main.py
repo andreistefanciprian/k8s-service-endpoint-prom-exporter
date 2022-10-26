@@ -11,8 +11,12 @@ from datetime import datetime, timezone
 class MetricsCollector:
 
     """
-    Monitors a kubernetes service endpoints and reports available endpoints
-    and not_ready pod ip addresses as prometheus metrics.
+    Monitors a kubernetes service and collects endpoint metrics:
+        - pods ready to send traffic (endpoints)
+        - pods not ready to send traffic
+    These metrics are collected as counters/IP addresses and can be 
+        - exported to Prometheus (prometheus format)
+        - sent to Honeycomb as events (json format)
     """
 
     logging.basicConfig(
