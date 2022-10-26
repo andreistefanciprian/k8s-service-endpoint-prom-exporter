@@ -23,6 +23,7 @@ spec:
             value: "9153"
           - name: KUBE_AUTH_INSIDE_CLUSTER
             value: "True"
+          # disable OTEL_ENABLED k8s env var if you don't want OTEL
           # - name: OTEL_ENABLED
           #   value: "True"
           - name: OTEL_API_KEY

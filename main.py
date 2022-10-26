@@ -19,7 +19,7 @@ class MetricsCollector:
         format="%(levelname)s:%(asctime)s:%(message)s", level=logging.INFO
     )
 
-    def __init__(self, poll_interval=5, service=None, namespace=None, otel_enabled=None, otel_api_key=None, otel_serv_name=None):
+    def __init__(self, poll_interval=5, service=None, namespace=None, otel_enabled=False, otel_api_key=None, otel_serv_name=None):
         self.poll_interval = poll_interval
         self.core_api = client.CoreV1Api()
         self._k8s_client_connected = False
@@ -36,7 +36,7 @@ class MetricsCollector:
         self.otel_api_key = os.getenv("OTEL_API_KEY") if otel_api_key is None else otel_api_key
         self.otel_serv_name = service if otel_serv_name is None else otel_serv_name
         self._honeycomb_client_connected = False
-        self.otel_enabled = os.getenv("OTEL_ENABLED") if otel_enabled is None else False
+        self.otel_enabled = otel_enabled
 
     def __time_track(func):
         """
@@ -182,6 +182,7 @@ def main():
     namespace_name = "default"
     exporter_port = int(os.getenv("EXPORTER_PORT", "9153"))
     kube_auth = os.getenv("KUBE_AUTH_INSIDE_CLUSTER", False)
+    otel_enabled = os.getenv("OTEL_ENABLED")
 
     # authenticate k8s client
     if kube_auth:
@@ -192,7 +193,8 @@ def main():
     t = MetricsCollector(
         poll_interval=2,
         service=service_name,
-        namespace=namespace_name
+        namespace=namespace_name,
+        otel_enabled=otel_enabled
         )
     print("Starting server on port", exporter_port)
     start_http_server(exporter_port)
