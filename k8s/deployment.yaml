@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: endpoints-prom-exporter
+  labels:
+    app: endpoints-prom-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: endpoints-prom-exporter
+  template:
+    metadata:
+      labels:
+        app: endpoints-prom-exporter
+    spec:
+      serviceAccountName: endpoints-prom-exporter
+      containers:
+      - name: endpoints-prom-exporter
+        image: andreistefanciprian/endpoints-prom-exporter:latest
+        env:
+          - name: EXPORTER_PORT
+            value: "9153"
+          - name: KUBE_AUTH_INSIDE_CLUSTER
+            value: "True"
+          # disable OTEL_ENABLED k8s env var if you don't want OTEL
+          # - name: OTEL_ENABLED
+          #   value: "True"
+          - name: OTEL_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: honeycomb
+                key: otel_api_key
+                optional: true
+---            
+apiVersion: v1
+kind: Service
+metadata:
+  name: endpoints-prom-exporter
+  labels:
+    app: endpoints-prom-exporter
+spec:
+  selector:
+    app: endpoints-prom-exporter
+  ports:
+    - name: prom
+      port: 9153
+      targetPort: 9153
+      protocol: TCP

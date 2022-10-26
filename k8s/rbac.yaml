@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: endpoints-prom-exporter
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: endpoints-prom-exporter
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "pods/status"]
+  verbs: ['*']
+- apiGroups: [""]
+  resources: ["namespaces", "events", "endpointslices", "endpoints", "services"]
+  verbs: ["get", "watch", "list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: endpoints-prom-exporter
+subjects:
+- kind: ServiceAccount
+  name: endpoints-prom-exporter
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: endpoints-prom-exporter
+  apiGroup: ""
+---
