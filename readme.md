@@ -1,9 +1,13 @@
 ## Description
 
 Monitors a kubernetes service and collects endpoint metrics:
-* srv_ready_pods (displays current numbers of service endpoints - pods that are ready to serve traffic)
+* srv_ready_pods (displays current numbers of service endpoints - pods that are passing k8s startup/readiness/liveness probes)
 ![srv_ready_pods](srv_ready_pods.png)
-* srv_not_ready_pods (displays current number of service pods that aren'r ready to serve traffic)  
+
+* srv_not_ready_pods (displays current number of service pods that are not ready to serve traffic)
+    - pods that are failing k8s startup/readiness/liveness probes
+    - pods that can't pull image/etc
+    - Note: this metric doesn't capture pods that can't be scheduled for any reason
 ![srv_not_ready_pods](srv_not_ready_pods.png)
 
 These metrics can be:
@@ -67,7 +71,7 @@ for pod in `kubectl get pods --no-headers | grep foo | grep Running | awk '{prin
 # fail startup/readiness probe by redeploying with wrong port number for these probes
 ```
 
-* Note: srv_not_ready_pods counter doesn't capture pods that can't be schedules for any reason.
+* Note: srv_not_ready_pods counter doesn't capture pods that can't be scheduled for any reason.
 ```
 # cordon all nodes
 for node in `kubectl get nodes --no-headers | awk '{print $1}'`; do kubectl cordon $node; done
