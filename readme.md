@@ -42,12 +42,35 @@ kubectl apply -f k8s/foo_deployment.yaml
 kubectl apply -f k8s/rbac.yaml
 kubectl apply -f k8s/servicemonitor.yaml
 kubectl apply -f k8s/deployment.yaml
+```
 
-# check app logs
+#### Testing
+
+```
+# check app logs while testing
 kubectl logs -l app=endpoints-prom-exporter -f
 
 # testing
 kubectl set image pod foo-f88c97f79-5dvph foo=nginx:fail
 kubectl set image deployment foo foo=nginx:1.12.0
 kubectl scale deployment foo -n default --replicas 0
+kubectl scale deployment foo -n default --replicas 10
+
+# fail liveness probe on one of the pods
+kubectl exec -ti foo-f88c97f79-5dvph rm /usr/share/nginx/html/index.html
+
+# fail liveness probe on all pods
+for pod in `kubectl get pods --no-headers | grep foo | grep Running | awk '{print $1}'`; do kubectl exec -ti $pod rm /usr/share/nginx/html/index.html; done
+
+# fail startup/readiness probe by redeploying with wrong port number for these probes
+```
+
+* Note: srv_not_ready_pods counter doesn't capture pods that can't be schedules for any reason.
+```
+# cordon all nodes
+for node in `kubectl get nodes --no-headers | awk '{print $1}'`; do kubectl cordon $node; done
+# scale deployment
+kubectl scale deployment foo -n default --replicas 5
+# uncordon all nodes
+for node in `kubectl get nodes --no-headers | awk '{print $1}'`; do kubectl uncordon $node; done
 ```
