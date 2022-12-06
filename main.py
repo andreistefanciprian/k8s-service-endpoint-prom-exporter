@@ -30,13 +30,16 @@ class MetricsCollector:
         self._k8s_client_connected = False
         self.service = service
         self.namespace = namespace
+        self.labels = ["namespace", "service"]
         self.prom_endpoint_addresses_counter = Gauge(
             "srv_ready_pods",
             "Number of current pods that are serving traffic to service.",
+            self.labels,
         )
         self.prom_not_ready_addresses_counter = Gauge(
             "srv_not_ready_pods",
             "Number of current pods that are not serving traffic to service.",
+            self.labels,
         )
         self.otel_api_key = os.getenv("OTEL_API_KEY") if otel_api_key is None else otel_api_key
         self.otel_serv_name = service if otel_serv_name is None else otel_serv_name
@@ -155,9 +158,13 @@ class MetricsCollector:
                 dbg_not_ready_count = len(dbg_not_ready_list)  # tobedeleted
                 dbg_eps_count = len(dbg_eps_list)  # tobedeleted
                 
-                # set prometheus metrics
-                self.prom_endpoint_addresses_counter.set(endpoint_addresses)
-                self.prom_not_ready_addresses_counter.set(not_ready_addresses)
+                # set prometheus metrics without labels
+                # self.prom_endpoint_addresses_counter.set(endpoint_addresses)
+                # self.prom_not_ready_addresses_counter.set(not_ready_addresses)
+
+                # set prometheus metrics with labels
+                self.prom_endpoint_addresses_counter.labels(self.namespace, self.service).set(endpoint_addresses)
+                self.prom_not_ready_addresses_counter.labels(self.namespace, self.service).set(not_ready_addresses)
                 
                 # send otel event
                 timestamp = datetime.now(timezone.utc).astimezone()
