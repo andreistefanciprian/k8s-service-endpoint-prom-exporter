@@ -38,7 +38,7 @@ To run the script locally, from outside the cluster, follow these steps:
    pip install -r requirements.txt
    ```
 
-4. Run the script with OpenTelemetry (OTEL) enabled or disabled:
+4. Run the script:
    ```bash
    python main.py --service-name foo --namespace-name default --polling-interval 2
    ```
