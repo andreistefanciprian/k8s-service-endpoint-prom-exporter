@@ -18,21 +18,14 @@ spec:
       containers:
       - name: endpoints-prom-exporter
         image: andreistefanciprian/endpoints-prom-exporter:latest
+        imagePullPolicy: Always
         command: ["/bin/sh"]
         args: ["-c", "python main.py --service-name foo --namespace-name default --polling-interval 2"]
-        # OTEL enabled
-        # args: ["-c", "python main.py --service-name foo --namespace-name default --polling-interval 2 --otel-enabled True"]
         env:
           - name: EXPORTER_PORT
             value: "9153"
           - name: KUBE_AUTH_INSIDE_CLUSTER
             value: "True"
-          - name: OTEL_API_KEY
-            valueFrom:
-              secretKeyRef:
-                name: honeycomb
-                key: otel_api_key
-                optional: true
 ---            
 apiVersion: v1
 kind: Service
